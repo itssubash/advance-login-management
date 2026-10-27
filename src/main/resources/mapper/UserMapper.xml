@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.yenyasoft.admin_user_management.mapper.UserMapper">
+
+    <resultMap id="userResultMap" type="com.yenyasoft.admin_user_management.models.User">
+        <id property="userId" column="user_id"/>
+        <result property="firstName" column="first_name"/>
+        <result property="lastName" column="last_name"/>
+        <result property="email" column="email"/>
+        <result property="username" column="username"/>
+        <result property="password" column="password"/>
+        <result property="address" column="address"/>
+        <result property="phoneNumber" column="phone_number"/>
+        <result property="dob" column="dob"/>
+        <result property="role" column="role"
+                javaType="com.yenyasoft.admin_user_management.enums.RoleType"/>
+        <result property="status" column="status"
+                javaType="com.yenyasoft.admin_user_management.enums.AccountStatus"/>
+        <result property="rejectionReason" column="rejection_reason"/>
+        <result property="createdAt" column="created_at"/>
+        <result property="updatedAt" column="updated_at"/>
+        <result property="approvedAt" column="approved_at"/>
+    </resultMap>
+
+    <sql id="userColumns">
+        user_id, first_name, last_name, email, username, password, address,
+        phone_number, dob, role, status, rejection_reason, created_at, updated_at, approved_at
+    </sql>
+
+    <sql id="userListColumns">
+        user_id, first_name, last_name, email, username, address,
+        phone_number, dob, role, status, rejection_reason, created_at, updated_at, approved_at
+    </sql>
+
+    <sql id="userSearchFilter">
+        <where>
+            <if test="status != null">
+                and status = #{status}
+            </if>
+            <if test="search != null and search != ''">
+                and (
+                    lower(first_name) like '%' || lower(#{search}) || '%'
+                    or lower(last_name) like '%' || lower(#{search}) || '%'
+                    or lower(username) like '%' || lower(#{search}) || '%'
+                    or lower(email) like '%' || lower(#{search}) || '%'
+                )
+            </if>
+        </where>
+    </sql>
+
+    <select id="findById" resultMap="userResultMap">
+        select <include refid="userColumns"/>
+        from users_table
+        where user_id = #{userId}
+    </select>
+
+    <select id="findByUsername" resultMap="userResultMap">
+        select <include refid="userColumns"/>
+        from users_table
+        where username = #{username}
+    </select>
+
+    <select id="findByEmail" resultMap="userResultMap">
+        select <include refid="userColumns"/>
+        from users_table
+        where email = #{email}
+    </select>
+
+    <select id="existsByUsername" resultType="boolean">
+        select count(*) > 0
+        from users_table
+        where username = #{username}
+    </select>
+
+    <select id="existsByEmail" resultType="boolean">
+        select count(*) > 0
+        from users_table
+        where email = #{email}
+    </select>
+
+    <select id="findAllUsers" resultMap="userResultMap">
+        select <include refid="userListColumns"/>
+        from users_table
+        order by user_id
+    </select>
+
+    <select id="findAllByRole" resultMap="userResultMap">
+        select <include refid="userListColumns"/>
+        from users_table
+        where role = #{role}
+        order by user_id
+    </select>
+
+    <select id="findAllByStatus" resultMap="userResultMap">
+        select <include refid="userListColumns"/>
+        from users_table
+        where status = #{status}
+        order by user_id
+    </select>
+
+    <select id="searchUsers" resultMap="userResultMap">
+        select <include refid="userListColumns"/>
+        from users_table
+        <include refid="userSearchFilter"/>
+        order by user_id
+    </select>
+
+    <select id="searchUsersPaged" resultMap="userResultMap">
+        select <include refid="userListColumns"/>
+        from users_table
+        <include refid="userSearchFilter"/>
+        order by user_id
+        limit #{limit} offset #{offset}
+    </select>
+
+    <select id="countSearchUsers" resultType="long">
+        select count(*)
+        from users_table
+        <include refid="userSearchFilter"/>
+    </select>
+
+    <select id="countAllUsers" resultType="long">
+        select count(*)
+        from users_table
+    </select>
+
+    <select id="countByStatus" resultType="long">
+        select count(*)
+        from users_table
+        where status = #{status}
+    </select>
+
+</mapper>

@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.yenyasoft.admin_user_management.mapper.LoginHistoryMapper">
+
+    <resultMap id="loginHistoryResultMap" type="com.yenyasoft.admin_user_management.models.LoginHistory">
+        <id property="hId" column="h_id"/>
+        <result property="username" column="username"/>
+        <result property="successful" column="successful"/>
+        <result property="loginStatus" column="login_status"
+                javaType="com.yenyasoft.admin_user_management.enums.LoginStatus"/>
+        <result property="ipAddress" column="ip_address"/>
+        <result property="browser" column="browser"/>
+        <result property="operatingSystem" column="operating_system"/>
+        <result property="device" column="device"/>
+        <result property="userAgent" column="user_agent"/>
+        <result property="failureReason" column="failure_reason"/>
+        <result property="loggedInAt" column="logged_in_at"/>
+        <association property="user" column="user_id"
+                     javaType="com.yenyasoft.admin_user_management.models.User"
+                     select="com.yenyasoft.admin_user_management.mapper.UserMapper.findById"/>
+    </resultMap>
+
+    <sql id="historyColumns">
+        h_id, user_id, username, successful, login_status, ip_address,
+        browser, operating_system, device, user_agent, failure_reason, logged_in_at
+    </sql>
+
+    <sql id="historyFilter">
+        <where>
+            <if test="userId != null">
+                and user_id = #{userId}
+            </if>
+            <if test="fromDateTime != null">
+                and logged_in_at &gt;= #{fromDateTime}
+            </if>
+            <if test="toDateTime != null">
+                and logged_in_at &lt;= #{toDateTime}
+            </if>
+            <if test="browser != null and browser != ''">
+                and lower(browser) = lower(#{browser})
+            </if>
+            <if test="operatingSystem != null and operatingSystem != ''">
+                and lower(operating_system) = lower(#{operatingSystem})
+            </if>
+            <if test="ipAddress != null and ipAddress != ''">
+                and ip_address = #{ipAddress}
+            </if>
+            <if test="loginStatus != null">
+                and login_status = #{loginStatus}
+            </if>
+        </where>
+    </sql>
+
+    <select id="findById" resultMap="loginHistoryResultMap">
+        select <include refid="historyColumns"/>
+        from history_table
+        where h_id = #{hId}
+    </select>
+
+    <select id="findByUserId" resultMap="loginHistoryResultMap">
+        select <include refid="historyColumns"/>
+        from history_table
+        where user_id = #{userId}
+        order by logged_in_at desc
+    </select>
+
+    <select id="findAllHistory" resultMap="loginHistoryResultMap">
+        select <include refid="historyColumns"/>
+        from history_table
+        order by logged_in_at desc
+    </select>
+
+    <select id="findByUsername" resultMap="loginHistoryResultMap">
+        select <include refid="historyColumns"/>
+        from history_table
+        where username = #{username}
+        order by logged_in_at desc
+    </select>
+
+    <select id="findByLoginStatus" resultMap="loginHistoryResultMap">
+        select <include refid="historyColumns"/>
+        from history_table
+        where login_status = #{loginStatus}
+        order by logged_in_at desc
+    </select>
+
+    <select id="findByDateRange" resultMap="loginHistoryResultMap">
+        select <include refid="historyColumns"/>
+        from history_table
+        <where>
+            <if test="fromDate != null">
+                and logged_in_at &gt;= #{fromDate}
+            </if>
+            <if test="toDate != null">
+                and logged_in_at &lt;= #{toDate}
+            </if>
+        </where>
+        order by logged_in_at desc
+    </select>
+
+    <select id="findLatestByUserId" resultMap="loginHistoryResultMap">
+        select <include refid="historyColumns"/>
+        from history_table
+        where user_id = #{userId}
+        order by logged_in_at desc
+        limit 1
+    </select>
+
+    <select id="searchHistory" resultMap="loginHistoryResultMap">
+        select <include refid="historyColumns"/>
+        from history_table
+        <include refid="historyFilter"/>
+        order by logged_in_at desc
+    </select>
+
+    <select id="searchHistoryPaged" resultMap="loginHistoryResultMap">
+        select <include refid="historyColumns"/>
+        from history_table
+        <include refid="historyFilter"/>
+        order by logged_in_at desc
+        limit #{limit} offset #{offset}
+    </select>
+
+    <select id="countSearchHistory" resultType="long">
+        select count(*)
+        from history_table
+        <include refid="historyFilter"/>
+    </select>
+
+    <select id="countByUserId" resultType="long">
+        select count(*)
+        from history_table
+        where user_id = #{userId}
+    </select>
+
+    <select id="countByDateRange" resultType="long">
+        select count(*)
+        from history_table
+        <where>
+            <if test="fromDate != null">
+                and logged_in_at &gt;= #{fromDate}
+            </if>
+            <if test="toDate != null">
+                and logged_in_at &lt;= #{toDate}
+            </if>
+        </where>
+    </select>
+
+</mapper>

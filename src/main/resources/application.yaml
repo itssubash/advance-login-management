@@ -1,0 +1,45 @@
+spring:
+  application:
+    name: admin-user-management
+
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/advanced_login_db
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: Admin@123
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: "tiwarisubash730@gmail.com"
+    password: pgrcwazmdvrmsogd
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+mybatis:
+  mapper-locations: classpath:/mapper/*.xml
+
+app:
+  jwt-secret: "hewr8y4hwef9ryhfdas9yfhd9asuhfdhfhfhasjf98ewur0ujewf9weujrfii9ri9ewifk"
+  jwt-issuer: "www.subashtiwari07.com.np"
+  jwt-access-expiry: 600000
+  jwt-refresh-expiry: 86400000
+
+logging:
+  level:
+    org.springframework.security: DEBUG
