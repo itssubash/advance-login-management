@@ -169,6 +169,24 @@ public class AdminServiceImpl implements AdminService {
         }
     }
 
+    @Override
+    public List<UserDto> getAllPendingUsers(AccountStatus status) {
+        List<User> pendingUsers = userMapper.findAllByStatus(AccountStatus.PENDING);
+        return pendingUsers.stream().map(UserConverter::toUserDto).toList();
+    }
+
+    @Override
+    public List<UserDto> getAllRejectedUsers(AccountStatus status) {
+        List<User> rejectedUsers = userMapper.findAllByStatus(AccountStatus.REJECTED);
+        return rejectedUsers.stream().map(UserConverter::toUserDto).toList();
+    }
+
+    @Override
+    public List<UserDto> getAllDisabledUsers(AccountStatus status) {
+        List<User> disabledUser = userMapper.findAllByStatus(AccountStatus.DISABLED);
+        return disabledUser.stream().map(UserConverter::toUserDto).toList();
+    }
+
 
     private User findUser(Integer userId) {
         User user = userMapper.findById(userId);

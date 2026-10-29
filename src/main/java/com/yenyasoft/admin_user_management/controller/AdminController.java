@@ -110,6 +110,33 @@ public class AdminController extends BaseController {
                 ).getBody()
         );
     }
+    @GetMapping("/pending-users-list")
+    public ResponseEntity<GlobalResponse<List<UserDto>>> getAllPendingUsers(){
+        return ResponseEntity.ok(
+                success(
+                        adminService.getAllPendingUsers(AccountStatus.PENDING),
+                        "Pending users fetched successfully"
+                ).getBody()
+        );
+    }
+    @GetMapping("/rejected-users-list")
+    public ResponseEntity<GlobalResponse<List<UserDto>>> getAllRejectedUsers(){
+        return ResponseEntity.ok(
+                success(
+                        adminService.getAllRejectedUsers(AccountStatus.REJECTED),
+                        "Rejected users fetched successfully"
+                ).getBody()
+        );
+    }
+    @GetMapping("/disabled-users-list")
+    public ResponseEntity<GlobalResponse<List<UserDto>>> getAllDisabledUsers(){
+        return ResponseEntity.ok(
+                success(
+                        adminService.getAllDisabledUsers(AccountStatus.DISABLED),
+                        "Disabled users fetched successfully"
+                ).getBody()
+        );
+    }
     @PutMapping("/reactivate-account")
     public ResponseEntity<GlobalResponse<Void>> reactivateAccount(@Valid @RequestBody ReApproveRequest request){
         adminService.reactivateAccount(request);

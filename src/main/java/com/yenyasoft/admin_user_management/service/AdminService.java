@@ -30,4 +30,10 @@ public interface AdminService {
     List<UserDto> getAllApprovedUsers(AccountStatus status);
 
     void reactivateAccount(ReApproveRequest  request);
+
+    List<UserDto> getAllPendingUsers(AccountStatus status);
+
+    List<UserDto> getAllRejectedUsers(AccountStatus status);
+
+    List<UserDto> getAllDisabledUsers(AccountStatus status);
 }

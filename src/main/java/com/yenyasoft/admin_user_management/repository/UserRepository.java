@@ -8,8 +8,7 @@ import org.springframework.stereotype.Repository;
  * Author: Subash
  * Created: 10/12/2026
  * File: UserRepository.java
-
- */
+ **/
 import java.util.Optional;
 
 @Repository
