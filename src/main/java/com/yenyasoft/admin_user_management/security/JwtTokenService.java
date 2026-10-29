@@ -1,10 +1,13 @@
 package com.yenyasoft.admin_user_management.security;
 
 import com.yenyasoft.admin_user_management.dtos.TokenPair;
+import com.yenyasoft.admin_user_management.models.User;
+import com.yenyasoft.admin_user_management.repository.TokenRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,7 +25,9 @@ import java.util.Map;
  * File: JwtTokenService.java
  */
 @Service
+@RequiredArgsConstructor
 public class JwtTokenService {
+    private final TokenRepository tokenRepository;
 
     @Value("${app.jwt-secret}")
     private String secret;
@@ -103,26 +108,38 @@ public class JwtTokenService {
         return extractAllClaims(token).getSubject();
     }
 
+    public boolean isValid(String token, UserDetails user) {
+        String username = getSubject(token);
+        boolean validToken = tokenRepository
+                .findByAccessToken(token)
+                .map(t -> !t.isLoggedOut())
+                .orElse(false);
 
-    //validate token expiry
-    public boolean isTokenExpired(String token) {
-        Claims claims = extractAllClaims(token);
-        return claims.getExpiration() == null || !claims.getExpiration().after(new Date());
+        return (username.equals(user.getUsername())) && !isTokenExpired(token) && validToken;
+    }
+    private boolean isTokenExpired(String token) {
+        return extractExpiration(token).before(new Date());
     }
 
-    //validating the subjects of the token
-    public boolean isTokenValid(String token, UserDetails user) {
-        try {
-            Claims claims = extractAllClaims(token);
-            return claims.getExpiration().after(new Date())
-                    && "AccessToken".equals(claims.get("token_type"))
-                    && claims.getSubject().equals(user.getUsername());
-
-
-        } catch (JwtException ex) {
-            throw new IllegalArgumentException("Token validation failed", ex);
-        }
+    private Date extractExpiration(String token) {
+        return extractAllClaims(token).getExpiration();
     }
+
+    public boolean isValidRefreshToken(String token, User user) {
+        String username = getSubject(token);
+        boolean validRefreshToken = tokenRepository
+                .findByRefreshToken(token)
+                .map(t -> !t.isLoggedOut())
+                .orElse(false);
+
+        return (username.equals(user.getUsername())) && !isTokenExpired(token) && validRefreshToken;
+    }
+
+
+
+
+
+
 
 }
 

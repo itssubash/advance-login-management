@@ -13,6 +13,8 @@ import lombok.NoArgsConstructor;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Author: Subash
@@ -73,6 +75,10 @@ public class User {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @Column(name = "tokens")
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "user")
+    private List<Token> tokens = new ArrayList<>();
 
     @Column(name = "failed_login_attempts", nullable = false)
     @Builder.Default

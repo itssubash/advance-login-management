@@ -37,10 +37,6 @@ public class LoginHistoryServiceImpl implements LoginHistoryService {
         return search(request, "Your login history retrieved successfully");
     }
 
-//    @Override
-//    public GlobalResponse<Page<LoginHistoryResponse>> getUserLoginHistory(LoginHistorySearchRequest request) {
-//        return search(request, "Login history retrieved successfully");
-//    }
 
     @Override
     public GlobalResponse<Page<LoginHistoryResponse>> getAllLoginHistory(LoginHistorySearchRequest request) {

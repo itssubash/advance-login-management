@@ -1,6 +1,8 @@
 package com.yenyasoft.admin_user_management.security;
 
 import com.yenyasoft.admin_user_management.config.CustomUserDetailsService;
+import com.yenyasoft.admin_user_management.models.Token;
+import com.yenyasoft.admin_user_management.repository.TokenRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +28,7 @@ import java.io.IOException;
 public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtTokenService jwtTokenService;
     private final CustomUserDetailsService customUserDetailsService;
+    private final TokenRepository tokenRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -38,14 +41,35 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             return;
         }
         String authToken = authHeader.substring(7);
+
         try {
             String username = jwtTokenService.getSubject(authToken);
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                // Step 2: Find the token record in the database.
+                Token storedToken = tokenRepository
+                        .findByAccessToken(authToken)
+                        .orElse(null);
+
+                if (storedToken == null || storedToken.isLoggedOut()) {
+                    SecurityContextHolder.clearContext();
+
+                    response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                    response.setContentType("application/json");
+                    response.setCharacterEncoding("UTF-8");
+                    response.getWriter().write("""
+                {
+                    "success": false,
+                    "message": "Token is invalid or has been logged out",
+                    "data": null
+                }
+                """);
+                    return;
+                }
 
                 UserDetails userDetails = customUserDetailsService.loadUserByUsername(username);
 
-                if (jwtTokenService.isTokenValid(authToken, userDetails)) {
+                if (jwtTokenService.isValid(authToken, userDetails)) {
                     UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
                             userDetails,
                             null,

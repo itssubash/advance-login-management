@@ -5,9 +5,12 @@ import com.yenyasoft.admin_user_management.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 
 /**
@@ -40,6 +43,43 @@ public class AuthController extends BaseController {
                 "Login successful"
         );
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<GlobalResponse<String>> logout(
+            @RequestHeader(value = "Authorization", required = false)
+            String authorization) {
+
+        if (authorization == null
+                || !authorization.startsWith("Bearer ")
+                || authorization.substring(7).isBlank()) {
+
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "A valid Bearer access token is required"
+            );
+        }
+
+        String accessToken = authorization.substring(7).trim();
+
+        authService.logout(accessToken);
+
+        SecurityContextHolder.clearContext();
+
+        return ResponseEntity.ok(
+                GlobalResponse.success(
+                        "Logged out successfully",
+                        null
+                )
+        );
+    }
+    @PostMapping("/regenerate-tokens")
+    public ResponseEntity<GlobalResponse<LoginResponse>> regenerateToken(@Valid @RequestBody NewTokenRequest request) {
+        return success(
+                authService.regenerateTokens(request),
+                "New token pairs regenerated successfully"
+        );
+    }
+
     @PostMapping("/change-password")
     public ResponseEntity<GlobalResponse<Void>> changePassword(
             Authentication authentication,

@@ -1,5 +1,6 @@
 package com.yenyasoft.admin_user_management.service.impl;
 
+import com.yenyasoft.admin_user_management.config.CustomUserDetailsService;
 import com.yenyasoft.admin_user_management.converter.UserConverter;
 import com.yenyasoft.admin_user_management.dtos.*;
 import com.yenyasoft.admin_user_management.enums.AccountStatus;
@@ -9,8 +10,10 @@ import com.yenyasoft.admin_user_management.mapper.LoginHistoryMapper;
 import com.yenyasoft.admin_user_management.mapper.UserMapper;
 import com.yenyasoft.admin_user_management.models.LoginHistory;
 import com.yenyasoft.admin_user_management.models.Otp;
+import com.yenyasoft.admin_user_management.models.Token;
 import com.yenyasoft.admin_user_management.models.User;
 import com.yenyasoft.admin_user_management.repository.OtpRepository;
+import com.yenyasoft.admin_user_management.repository.TokenRepository;
 import com.yenyasoft.admin_user_management.repository.UserRepository;
 import com.yenyasoft.admin_user_management.security.JwtTokenService;
 import com.yenyasoft.admin_user_management.service.*;
@@ -31,6 +34,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
 
 
 /**
@@ -53,6 +57,8 @@ public class AuthServiceImpl implements AuthService {
     private final EmailService emailService;
     private final OtpRepository otpRepository;
     private final FailedLoginAttemptService failedLoginAttemptService;
+    private final TokenRepository tokenRepository;
+    private final CustomUserDetailsService customUserDetailsService;
 
     @Override
     @Transactional
@@ -106,6 +112,8 @@ public class AuthServiceImpl implements AuthService {
 
             String accessToken = jwtTokenService.generateAccessToken(userDetails);
             String refreshToken = jwtTokenService.generateRefreshToken(userDetails);
+            revokeAllTokens(user);
+            saveTokens(accessToken, refreshToken, user);
 
             return LoginResponse.builder()
                     .user(UserConverter.toUserDto(user))
@@ -273,7 +281,6 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void resetPassword(ResetPasswordRequest request) {
         String email = request.getEmail();
-
         Otp resetOtp = otpRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Please verify your otp first "));
 
@@ -287,6 +294,96 @@ public class AuthServiceImpl implements AuthService {
 
     }
 
+    @Override
+    public void logout(String accessToken) {
+        Token token = tokenRepository.findByAccessToken(accessToken).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Access token not found"));
+        if (token.isLoggedOut()){
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You need to log in first, your token has been revoked");
+        }
+        token.setLoggedOut(true);
+        tokenRepository.save(token);
+
+    }
+    @Override
+    @Transactional
+    public LoginResponse regenerateTokens(NewTokenRequest request) {
+        String refreshToken = request.getRefreshToken();
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Refresh token is required"
+            );
+        }
+
+        Token storedToken = tokenRepository
+                .findByRefreshToken(refreshToken)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Invalid refresh token"
+                ));
+
+        // 2. Reject tokens that have already been revoked.
+        if (storedToken.isLoggedOut()) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Refresh token has already been revoked"
+            );
+        }
+
+        // 3. Load the associated user.
+        User user = storedToken.getUser();
+        if (user == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Refresh token is not associated with a user"
+            );
+        }
+
+        // 4. Validate the refresh JWT.
+        UserDetails userDetails = customUserDetailsService.loadUserByUsername(user.getUsername());
+
+        if (!jwtTokenService.isValid(refreshToken, userDetails)) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Refresh token is invalid or expired"
+            );
+        }
+
+        // 5. Revoke the old token pair.
+        storedToken.setLoggedOut(true);
+        tokenRepository.saveAndFlush(storedToken);
+
+        // 6. Generate a new token pair.
+        String newAccessToken = jwtTokenService.generateAccessToken(userDetails);
+
+        String newRefreshToken = jwtTokenService.generateRefreshToken(userDetails);
+        // 7. Persist the new token pair.
+        saveTokens(newAccessToken, newRefreshToken, user);
+
+        // 8. Return the rotated tokens.
+        return LoginResponse.builder()
+                .user(UserConverter.toUserDto(user))
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .build();
+    }
+
+    private void saveTokens(String accessToken, String refreshToken, User currentUser) {
+        Token token = new Token();
+        token.setAccessToken(accessToken);
+        token.setRefreshToken(refreshToken);
+        token.setUser(currentUser);
+        token.setLoggedOut(false);
+        tokenRepository.save(token);
+
+    }
+    private void revokeAllTokens(User currentUser) {
+        List<Token> validTokens = tokenRepository.findAllActiveTokensByUserId(currentUser.getUserId());
+        validTokens.forEach(token -> token.setLoggedOut(true));
+        tokenRepository.saveAll(validTokens);
+
+    }
+
     private UserProfileResponse buildProfile(User user) {
         LoginHistory lastLogin = loginHistoryMapper.findLatestByUserId(user.getUserId());
         long totalLogins = loginHistoryMapper.countByUserId(user.getUserId());
@@ -297,14 +394,15 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 
-    private void saveLoginHistory(User user, String username, boolean successful,
+    public void saveLoginHistory(User user, String username, boolean successful,
                                   String failureReason, HttpServletRequest httpRequest) {
         String userAgent = httpRequest.getHeader("User-Agent");
         LoginHistory history = new LoginHistory();
         history.setUser(user);
         history.setUsername(username);
-        history.setSuccessful(successful);
-        history.setLoginStatus(successful ? LoginStatus.SUCCESS : LoginStatus.FAILED);
+        boolean hasFailedAttempts = user.getFailedLoginAttempts()!= null && user.getFailedLoginAttempts()>0;
+        history.setSuccessful(successful && !hasFailedAttempts);
+        history.setLoginStatus(successful && !hasFailedAttempts ? LoginStatus.SUCCESS : LoginStatus.FAILED);
         history.setIpAddress(httpRequest.getRemoteAddr());
         history.setUserAgent(userAgent);
         history.setBrowser(UserAgentUtils.resolveBrowser(userAgent));

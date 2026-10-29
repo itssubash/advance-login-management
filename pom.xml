@@ -6,7 +6,7 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.0.8</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>com.yenyasoft</groupId>
 	<artifactId>admin-user-management</artifactId>
@@ -65,7 +65,6 @@
 			<version>4.0.1</version>
 		</dependency>
 
-		<!-- Apache POI - Excel (.xlsx) and Word (.docx) report generation -->
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml</artifactId>
@@ -75,6 +74,7 @@
 		<dependency>
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
+			<version>42.7.14</version>
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
@@ -88,7 +88,6 @@
 			<version>0.12.6</version>
 		</dependency>
 
-		<!-- JJWT implementation -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-impl</artifactId>
@@ -96,12 +95,18 @@
 			<scope>runtime</scope>
 		</dependency>
 
-		<!-- JJWT JSON serialization -->
 		<dependency>
 			<groupId>io.jsonwebtoken</groupId>
 			<artifactId>jjwt-jackson</artifactId>
 			<version>0.12.6</version>
 			<scope>runtime</scope>
+		</dependency>
+		<!-- Source: https://mvnrepository.com/artifact/org.apache.pdfbox/pdfbox -->
+		<dependency>
+			<groupId>org.apache.pdfbox</groupId>
+			<artifactId>pdfbox</artifactId>
+			<version>3.0.8</version>
+			<scope>compile</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
