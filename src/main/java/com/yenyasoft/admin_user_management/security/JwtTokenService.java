@@ -18,6 +18,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.UUID;
 
 /**
  * Author: Subash
@@ -79,6 +81,7 @@ public class JwtTokenService {
                 .map(GrantedAuthority::getAuthority)
                 .findFirst().orElse("ROLE_USER");
         map.put("role", role);
+        map.put("jti", UUID.randomUUID().toString());
 
         return Jwts.builder()
                 .subject(userDetails.getUsername())
@@ -109,30 +112,38 @@ public class JwtTokenService {
     }
 
     public boolean isValid(String token, UserDetails user) {
-        String username = getSubject(token);
         boolean validToken = tokenRepository
                 .findByAccessToken(token)
-                .map(t -> !t.isLoggedOut())
+                .map(t -> !t.isLoggedOut() && !t.isAccessTokenRevoked())
                 .orElse(false);
 
-        return (username.equals(user.getUsername())) && !isTokenExpired(token) && validToken;
-    }
-    private boolean isTokenExpired(String token) {
-        return extractExpiration(token).before(new Date());
-    }
-
-    private Date extractExpiration(String token) {
-        return extractAllClaims(token).getExpiration();
+        return isValidToken(token, user.getUsername(), "AccessToken", validToken);
     }
 
     public boolean isValidRefreshToken(String token, User user) {
-        String username = getSubject(token);
         boolean validRefreshToken = tokenRepository
                 .findByRefreshToken(token)
                 .map(t -> !t.isLoggedOut())
                 .orElse(false);
 
-        return (username.equals(user.getUsername())) && !isTokenExpired(token) && validRefreshToken;
+        return isValidToken(token, user.getUsername(), "RefreshToken", validRefreshToken);
+    }
+
+    private boolean isValidToken(String token, String username, String expectedType, boolean storedTokenIsActive) {
+        if (!storedTokenIsActive) {
+            return false;
+        }
+
+        try {
+            Claims claims = extractAllClaims(token);
+            Date expiration = claims.getExpiration();
+            return Objects.equals(claims.getSubject(), username)
+                    && Objects.equals(claims.get("token_type"), expectedType)
+                    && expiration != null
+                    && expiration.after(new Date());
+        } catch (IllegalArgumentException ex) {
+            return false;
+        }
     }
 
 
@@ -142,7 +153,5 @@ public class JwtTokenService {
 
 
 }
-
-
 
 

@@ -90,7 +90,7 @@ public class AuthServiceImpl implements AuthService {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
-                            request.getUsername(),
+                            username,
                             request.getPassword()));
             SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -141,6 +141,7 @@ public class AuthServiceImpl implements AuthService {
 
             User user = userRepository.findByUsername(username)
                     .orElseGet(() -> userMapper.findByUsername(username));
+            saveLoginHistory(user, username, false, "Invalid username or password", httpRequest);
 
             if (user != null && user.getStatus() == AccountStatus.DISABLED) {
                 throw new ResponseStatusException(
@@ -297,10 +298,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void logout(String accessToken) {
         Token token = tokenRepository.findByAccessToken(accessToken).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Access token not found"));
-        if (token.isLoggedOut()){
+        if (token.isLoggedOut() || token.isAccessTokenRevoked()) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You need to log in first, your token has been revoked");
         }
-        token.setLoggedOut(true);
+        token.setAccessTokenRevoked(true);
         tokenRepository.save(token);
 
     }
@@ -342,7 +343,7 @@ public class AuthServiceImpl implements AuthService {
         // 4. Validate the refresh JWT.
         UserDetails userDetails = customUserDetailsService.loadUserByUsername(user.getUsername());
 
-        if (!jwtTokenService.isValid(refreshToken, userDetails)) {
+        if (!jwtTokenService.isValidRefreshToken(refreshToken, user)) {
             throw new ResponseStatusException(
                     HttpStatus.UNAUTHORIZED,
                     "Refresh token is invalid or expired"

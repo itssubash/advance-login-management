@@ -28,6 +28,9 @@ public class Token {
     @Column(name = "is_logged_out")
     private boolean isLoggedOut = false;
 
+    @Column(name = "is_access_token_revoked", nullable = false, columnDefinition = "boolean not null default false")
+    private boolean isAccessTokenRevoked = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;

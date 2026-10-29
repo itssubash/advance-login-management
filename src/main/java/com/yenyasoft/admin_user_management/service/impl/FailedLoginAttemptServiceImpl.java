@@ -33,7 +33,6 @@ public class FailedLoginAttemptServiceImpl implements FailedLoginAttemptService 
         User user = userRepository.findByUsername(username)
                 .orElseGet(() -> userMapper.findByUsername(username));
 
-
         if (user == null) {
             return;
         }

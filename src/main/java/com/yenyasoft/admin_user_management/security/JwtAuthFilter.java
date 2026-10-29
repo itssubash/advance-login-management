@@ -51,7 +51,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                         .findByAccessToken(authToken)
                         .orElse(null);
 
-                if (storedToken == null || storedToken.isLoggedOut()) {
+                if (storedToken == null || storedToken.isLoggedOut() || storedToken.isAccessTokenRevoked()) {
                     SecurityContextHolder.clearContext();
 
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
