@@ -5,6 +5,7 @@ import com.yenyasoft.admin_user_management.mapper.UserMapper;
 import com.yenyasoft.admin_user_management.models.User;
 import com.yenyasoft.admin_user_management.service.AuthService;
 import com.yenyasoft.admin_user_management.service.LoginHistoryService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,6 +23,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/api/users/me")
 @RequiredArgsConstructor
+@SecurityRequirement(name = "bearerAuth")
+
 public class UserController extends BaseController {
 
     private final AuthService authService;

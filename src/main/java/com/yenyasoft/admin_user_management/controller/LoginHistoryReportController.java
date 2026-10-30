@@ -2,6 +2,7 @@ package com.yenyasoft.admin_user_management.controller;
 import com.yenyasoft.admin_user_management.enums.FileType;
 import com.yenyasoft.admin_user_management.report_factory.LoginHistoryExportStrategy;
 import com.yenyasoft.admin_user_management.report_factory.report_factory.LoginHistoryReportFactory;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -16,6 +17,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/login-history")
+@SecurityRequirement(name = "bearerAuth")
+
 public class LoginHistoryReportController {
     private final LoginHistoryReportFactory reportFactory;
 

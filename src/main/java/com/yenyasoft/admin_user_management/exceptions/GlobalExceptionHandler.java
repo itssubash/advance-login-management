@@ -7,6 +7,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -78,21 +79,6 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(DisabledException.class)
-    public ResponseEntity<GlobalResponse<Void>> handleDisabledException(
-            DisabledException ex) {
-
-        GlobalResponse<Void> response = GlobalResponse.<Void>builder()
-                .message("Your account is pending admin approval. You cannot log in yet.")
-                .success(false)
-                .data(null)
-                .build();
-
-        return ResponseEntity
-                .status(HttpStatus.FORBIDDEN)
-                .body(response);
-    }
-
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<GlobalResponse<Void>> handleResponseStatusException(
             ResponseStatusException exception) {
@@ -109,18 +95,44 @@ public class GlobalExceptionHandler {
                 .body(response);
     }
     @ExceptionHandler(AuthenticationException.class)
-    public ResponseEntity<GlobalResponse<Void>> handleAuthenticationException(
-            AuthenticationException ex) {
+    public ResponseEntity<GlobalResponse<Void>> handleAuthenticationException(AuthenticationException ex) {
+        LockedException lockedException = findCause(ex, LockedException.class);
+        DisabledException disabledException = findCause(ex, DisabledException.class);
+        HttpStatus status = lockedException != null
+                ? HttpStatus.LOCKED
+                : disabledException != null
+                        ? HttpStatus.FORBIDDEN
+                        : HttpStatus.UNAUTHORIZED;
+        boolean pendingApproval = disabledException != null
+                && "User account has not been approved yet".equals(disabledException.getMessage());
+        String message = lockedException != null
+                ? "Your account is temporarily locked due to 5 consecutive failed login attempts. Try again in 15 minutes."
+                : disabledException == null
+                        ? "Invalid username or password."
+                        : pendingApproval
+                                ? "Your account is pending admin approval. You cannot log in yet."
+                                : "Your account has been disabled. Please contact the administrator.";
 
         GlobalResponse<Void> response = GlobalResponse.<Void>builder()
-                .message("Invalid username or password.")
+                .message(message)
                 .success(false)
                 .data(null)
                 .build();
 
         return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
+                .status(status)
                 .body(response);
+    }
+
+    private <T extends Throwable> T findCause(Throwable exception, Class<T> causeType) {
+        Throwable cause = exception;
+        while (cause != null) {
+            if (causeType.isInstance(cause)) {
+                return causeType.cast(cause);
+            }
+            cause = cause.getCause();
+        }
+        return null;
     }
 
 }

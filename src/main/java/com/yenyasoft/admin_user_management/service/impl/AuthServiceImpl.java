@@ -120,51 +120,25 @@ public class AuthServiceImpl implements AuthService {
                     .accessToken(accessToken)
                     .refreshToken(refreshToken)
                     .build();
-        }
-        catch (InternalAuthenticationServiceException e) {
-            if (isDisabledAccount(e)) {
-                throw new ResponseStatusException(
-                        HttpStatus.FORBIDDEN,
-                        "Your account has been disabled due to 5 consecutive unsuccessful login attempts."
-                );
-            }
-            throw e;
-
-        } catch (DisabledException e) {
-            throw new ResponseStatusException(
-                    HttpStatus.FORBIDDEN,
-                    "Your account has been disabled. Please contact the administrator."
-            );
-
-        } catch (BadCredentialsException e) {
-            failedLoginAttemptService.recordFailedAttempt(username);
-
-            User user = userRepository.findByUsername(username)
-                    .orElseGet(() -> userMapper.findByUsername(username));
-            saveLoginHistory(user, username, false, "Invalid username or password", httpRequest);
-
-            if (user != null && user.getStatus() == AccountStatus.DISABLED) {
-                throw new ResponseStatusException(
-                        HttpStatus.FORBIDDEN,
-                        "Your account has been disabled due to 5 consecutive unsuccessful login attempts."
-                );
-            }
-
-            throw new BadCredentialsException("Invalid username or password");
+        } catch (BadCredentialsException exception) {
+            recordFailedLogin(username, httpRequest);
+            throw exception;
         }
     }
 
-    private boolean isDisabledAccount(Throwable exception) {
-        Throwable cause = exception;
-
-        while (cause != null) {
-            if (cause instanceof DisabledException) {
-                return true;
-            }
-            cause = cause.getCause();
+    private void recordFailedLogin(String username, HttpServletRequest httpRequest) {
+        boolean accountLocked = failedLoginAttemptService.recordFailedAttempt(username);
+        User user = userRepository.findByUsername(username)
+                .orElseGet(() -> userMapper.findByUsername(username));
+        if (user != null) {
+            saveLoginHistory(user, username, false, "Invalid username or password", httpRequest);
         }
-
-        return "User account is disabled".equals(exception.getMessage());
+        if (accountLocked) {
+            throw new ResponseStatusException(
+                    HttpStatus.LOCKED,
+                    "Your account has been temporarily locked due to 5 consecutive failed login attempts. Try again in 15 minutes."
+            );
+        }
     }
 
 
@@ -316,8 +290,7 @@ public class AuthServiceImpl implements AuthService {
             );
         }
 
-        Token storedToken = tokenRepository
-                .findByRefreshToken(refreshToken)
+        Token storedToken = tokenRepository.findByRefreshToken(refreshToken)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.UNAUTHORIZED,
                         "Invalid refresh token"
@@ -397,13 +370,15 @@ public class AuthServiceImpl implements AuthService {
 
     public void saveLoginHistory(User user, String username, boolean successful,
                                   String failureReason, HttpServletRequest httpRequest) {
+        if (user == null) {
+            return;
+        }
         String userAgent = httpRequest.getHeader("User-Agent");
         LoginHistory history = new LoginHistory();
         history.setUser(user);
         history.setUsername(username);
-        boolean hasFailedAttempts = user.getFailedLoginAttempts()!= null && user.getFailedLoginAttempts()>0;
-        history.setSuccessful(successful && !hasFailedAttempts);
-        history.setLoginStatus(successful && !hasFailedAttempts ? LoginStatus.SUCCESS : LoginStatus.FAILED);
+        history.setSuccessful(successful);
+        history.setLoginStatus(successful ? LoginStatus.SUCCESS : LoginStatus.FAILED);
         history.setIpAddress(httpRequest.getRemoteAddr());
         history.setUserAgent(userAgent);
         history.setBrowser(UserAgentUtils.resolveBrowser(userAgent));

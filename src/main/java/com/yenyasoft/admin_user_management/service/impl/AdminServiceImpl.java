@@ -4,6 +4,9 @@ import com.yenyasoft.admin_user_management.converter.UserConverter;
 import com.yenyasoft.admin_user_management.dtos.*;
 import com.yenyasoft.admin_user_management.enums.AccountStatus;
 import com.yenyasoft.admin_user_management.enums.UserAction;
+import com.yenyasoft.admin_user_management.events.AccountApprovedEvent;
+import com.yenyasoft.admin_user_management.events.AccountDisabledEvent;
+import com.yenyasoft.admin_user_management.events.AccountRejectedEvent;
 import com.yenyasoft.admin_user_management.mapper.LoginHistoryMapper;
 import com.yenyasoft.admin_user_management.mapper.UserMapper;
 import com.yenyasoft.admin_user_management.models.LoginHistory;
@@ -13,6 +16,7 @@ import com.yenyasoft.admin_user_management.service.AdminService;
 import com.yenyasoft.admin_user_management.service.UserApprovalHistoryService;
 import com.yenyasoft.admin_user_management.utils.PagingUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -38,6 +42,7 @@ public class AdminServiceImpl implements AdminService {
     private final UserMapper userMapper;
     private final LoginHistoryMapper loginHistoryMapper;
     private final UserApprovalHistoryService userApprovalHistoryService;
+    private final ApplicationEventPublisher eventPublisher;
 
 
     @Override
@@ -81,6 +86,7 @@ public class AdminServiceImpl implements AdminService {
         pendingUser.setRejectionReason(null);
         User approvedUser = userRepository.save(pendingUser);
         userApprovalHistoryService.record(userId, UserAction.APPROVED, null, performedBy);
+        eventPublisher.publishEvent(new AccountApprovedEvent(pendingUser.getEmail()));
         return UserConverter.toUserDto(approvedUser);
     }
 
@@ -97,6 +103,8 @@ public class AdminServiceImpl implements AdminService {
         User rejectedUser = userRepository.save(user);
         userApprovalHistoryService.record(userId, UserAction.REJECTED, reason, performedBy);
 
+        eventPublisher.publishEvent(new AccountRejectedEvent(user.getEmail()));
+
         return UserConverter.toUserDto(rejectedUser);
     }
 
@@ -111,6 +119,9 @@ public class AdminServiceImpl implements AdminService {
         user.setUpdatedAt(LocalDateTime.now());
         User disabledUser = userRepository.save(user);
         userApprovalHistoryService.record(userId, UserAction.DISABLED, null, performedBy);
+
+        eventPublisher.publishEvent(new AccountDisabledEvent(user.getEmail()));
+
         return UserConverter.toUserDto(disabledUser);
     }
 

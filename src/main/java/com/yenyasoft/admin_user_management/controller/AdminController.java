@@ -4,6 +4,7 @@ import com.yenyasoft.admin_user_management.dtos.*;
 import com.yenyasoft.admin_user_management.enums.AccountStatus;
 import com.yenyasoft.admin_user_management.service.AdminService;
 import com.yenyasoft.admin_user_management.service.LoginHistoryService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -23,6 +24,8 @@ import java.util.List;
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
+@SecurityRequirement(name = "bearerAuth")
+
 public class AdminController extends BaseController {
     private final AdminService adminService;
     private final LoginHistoryService loginHistoryService;

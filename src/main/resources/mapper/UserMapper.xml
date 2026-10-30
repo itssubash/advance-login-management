@@ -23,16 +23,24 @@
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
         <result property="approvedAt" column="approved_at"/>
+        <result property="failedLoginAttempts" column="failed_login_attempts"/>
+        <result property="lockedUntil" column="locked_until"/>
     </resultMap>
 
+    <!--  The <sql> tag acts as a function which helps to retrieve the repeated datasets.TO use the sql tag
+    we need to use <include refid = sql id>
+
+    -->
     <sql id="userColumns">
         user_id, first_name, last_name, email, username, password, address,
-        phone_number, dob, role, status, rejection_reason, created_at, updated_at, approved_at
+        phone_number, dob, role, status, rejection_reason, created_at, updated_at, approved_at,
+        failed_login_attempts, locked_until
     </sql>
 
     <sql id="userListColumns">
         user_id, first_name, last_name, email, username, address,
-        phone_number, dob, role, status, rejection_reason, created_at, updated_at, approved_at
+        phone_number, dob, role, status, rejection_reason, created_at, updated_at, approved_at,
+        failed_login_attempts, locked_until
     </sql>
 
     <sql id="userSearchFilter">

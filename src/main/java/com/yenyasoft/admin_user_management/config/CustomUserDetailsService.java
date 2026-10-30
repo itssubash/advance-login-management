@@ -4,10 +4,13 @@ import com.yenyasoft.admin_user_management.enums.AccountStatus;
 import com.yenyasoft.admin_user_management.mapper.UserMapper;
 import com.yenyasoft.admin_user_management.models.User;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+
+import java.time.Instant;
 
 /**
  * Author: Subash
@@ -33,6 +36,9 @@ public class CustomUserDetailsService implements UserDetailsService {
         }
         if (user.getStatus() != AccountStatus.APPROVED){
             throw new DisabledException("User account has not been approved yet");
+        }
+        if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(Instant.now())) {
+            throw new LockedException("Account is temporarily locked due to too many failed login attempts");
         }
 
         return new CustomUserDetails(user);
